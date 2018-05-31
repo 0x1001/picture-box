@@ -1,68 +1,104 @@
+/**
+ *  @filename   :   epd4in2-demo.ino
+ *  @brief      :   4.2inch e-paper display demo
+ *  @author     :   Yehui from Waveshare
+ *
+ *  Copyright (C) Waveshare     August 4 2017
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documnetation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to  whom the Software is
+ * furished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS OR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 #include <Arduino.h>
-// GxEPD_HD_TestExample : test example for HD e-Paper displays from Dalian Good Display Inc. (parallel interface).
-//
-// Created by Jean-Marc Zingg based on demo code from Good Display for red DESTM32-L board.
-//
-// To be used with "BLACK 407ZE (V3.0)" of "BLACK F407VE/ZE/ZG boards" of package "STM32GENERIC for STM32 boards" for Arduino.
-// https://github.com/danieleff/STM32GENERIC
-//
-// The e-paper displays and demo board are available from:
-//
-// http://www.buy-lcd.com/index.php?route=product/product&path=2897_10571&product_id=22833
-// or https://www.aliexpress.com/store/product/Epaper-demo-kit-for-6-800X600-epaper-display-GDE060BA/600281_32812255729.html
-//
-// http://www.buy-lcd.com/index.php?route=product/product&path=2897_8371&product_id=15441
-// or https://www.aliexpress.com/store/product/GDE080A1-with-demo-8-epaper-display-panel-1024X768-with-demo/600281_32810750410.html
+#include <SPI.h>
+#include "epd4in2.h"
+//#include "imagedata.h"
+#include "epdpaint.h"
 
-// include library, include base class, make path known
-#include <Adafruit_GFX.h>
-#include <GxEPD.h>
+#define COLORED     0
+#define UNCOLORED   1
 
-// select the display class to use, only one
-//#include "GxGDE043A2/GxGDE043A2.cpp"
-//#include "GxGDE060BA/GxGDE060BA.cpp"
-#include "GxGDEW042T2/GxGDEW042T2.cpp"
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  Epd epd;
 
-// uncomment next line for drawBitmap() test
-//#include GxEPD_BitmapExamples
+  delay(100);
+  Serial.print("e-Paper start");
+  if (epd.Init() != 0) {
+    Serial.print("e-Paper init failed");
+    return;
+  }
 
-#include <GxIO/GxIO_SPI/GxIO_SPI.cpp>
-#include <GxIO/GxIO.cpp>
+  /* This clears the SRAM of the e-paper display */
+  epd.ClearFrame();
 
-GxIO_Class io(SPI, /*CS=*/ 10, /*DC=*/ 8, /*RST=*/ 9);
-GxEPD_Class display(io, /*RST=*/ 9, /*BUSY=*/ 7);
+  /**
+    * Due to RAM not enough in Arduino UNO, a frame buffer is not allowed.
+    * In this case, a smaller image buffer is allocated and you have to
+    * update a partial display several times.
+    * 1 byte = 8 pixels, therefore you have to set 8*N pixels at a time.
+    */
+  /*
+  unsigned char image[1500];
+  Paint paint(image, 400, 28);    //width should be the multiple of 8
 
-void setup()
-{
-  Serial.begin(115200);
-  Serial.println();
-  Serial.println("setup");
+  paint.Clear(UNCOLORED);
+  paint.DrawStringAt(0, 0, "e-Paper Demo", &Font24, COLORED);
+  epd.SetPartialWindow(paint.GetImage(), 100, 40, paint.GetWidth(), paint.GetHeight());
 
-  display.init();
+  paint.Clear(COLORED);
+  paint.DrawStringAt(100, 2, "Hello world", &Font24, UNCOLORED);
+  epd.SetPartialWindow(paint.GetImage(), 0, 64, paint.GetWidth(), paint.GetHeight());
 
-  Serial.println("setup done");
+  paint.SetWidth(64);
+  paint.SetHeight(64);
+
+  paint.Clear(UNCOLORED);
+  paint.DrawRectangle(0, 0, 40, 50, COLORED);
+  paint.DrawLine(0, 0, 40, 50, COLORED);
+  paint.DrawLine(40, 0, 0, 50, COLORED);
+  epd.SetPartialWindow(paint.GetImage(), 72, 120, paint.GetWidth(), paint.GetHeight());
+
+  paint.Clear(UNCOLORED);
+  paint.DrawCircle(32, 32, 30, COLORED);
+  epd.SetPartialWindow(paint.GetImage(), 200, 120, paint.GetWidth(), paint.GetHeight());
+
+  paint.Clear(UNCOLORED);
+  paint.DrawFilledRectangle(0, 0, 40, 50, COLORED);
+  epd.SetPartialWindow(paint.GetImage(), 72, 200, paint.GetWidth(), paint.GetHeight());
+
+  paint.Clear(UNCOLORED);
+  paint.DrawFilledCircle(32, 32, 30, COLORED);
+  epd.SetPartialWindow(paint.GetImage(), 200, 200, paint.GetWidth(), paint.GetHeight());
+  */
+
+  /* This displays the data from the SRAM in e-Paper module */
+  epd.DisplayFrame();
+
+  /* This displays an image */
+  //epd.DisplayFrame(IMAGE_BUTTERFLY);
+
+  /* Deep sleep */
+  epd.Sleep();
 }
 
-void showBitmapExample()
-{
-#ifdef _GxBitmapExamples_H_
-  //display.drawPicture(BitmapExample1, sizeof(BitmapExample1));
-  delay(5000);
-  //display.erasePicture(BitmapExample2, sizeof(BitmapExample2));
-  //display.setRotation(2);
-  display.fillScreen(GxEPD_WHITE);
-  //display.drawBitmap(bwBitmap640x384_1, (GxEPD_WIDTH - 640) / 2, (GxEPD_HEIGHT - 384) / 2, 640, 384, GxEPD_BLACK);
-  display.update();
-  delay(5000);
-  display.fillScreen(GxEPD_WHITE);
-  //display.drawBitmap(bwBitmap640x384_2, (GxEPD_WIDTH - 640) / 2, (GxEPD_HEIGHT - 384) / 2, 640, 384, GxEPD_BLACK, GxEPD::bm_flip_h);
-  display.update();
-  delay(10000);
-#endif
-}
+void loop() {
+  // put your main code here, to run repeatedly:
 
-void loop()
-{
-  showBitmapExample();
-  delay(30000);
 }
