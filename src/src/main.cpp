@@ -24,13 +24,7 @@
 #include "GxGDEW042T2/GxGDEW042T2.cpp"
 
 // uncomment next line for drawBitmap() test
-#include GxEPD_BitmapExamples
-
-// FreeFonts from Adafruit_GFX
-#include <Fonts/FreeMonoBold9pt7b.h>
-#include <Fonts/FreeMonoBold12pt7b.h>
-#include <Fonts/FreeMonoBold18pt7b.h>
-#include <Fonts/FreeMonoBold24pt7b.h>
+//#include GxEPD_BitmapExamples
 
 #include <GxIO/GxIO_SPI/GxIO_SPI.cpp>
 #include <GxIO/GxIO.cpp>
@@ -52,10 +46,7 @@ void setup()
 void showBitmapExample()
 {
 #ifdef _GxBitmapExamples_H_
-  display.drawPicture(BitmapExample1, sizeof(BitmapExample1));
-  delay(5000);
-  //display.erasePicture(BitmapExample1, sizeof(BitmapExample1));
-  display.drawPicture(BitmapExample2, sizeof(BitmapExample2));
+  //display.drawPicture(BitmapExample1, sizeof(BitmapExample1));
   delay(5000);
   //display.erasePicture(BitmapExample2, sizeof(BitmapExample2));
   //display.setRotation(2);
@@ -70,30 +61,8 @@ void showBitmapExample()
 #endif
 }
 
-void showFont(const char name[], const GFXfont* f)
-{
-  display.fillScreen(GxEPD_WHITE);
-  display.setTextColor(GxEPD_BLACK);
-  display.setFont(f);
-  display.setCursor(0, 0);
-  display.println();
-  display.println(name);
-  display.println(" !\"#$%&'()*+,-./");
-  display.println("0123456789:;<=>?");
-  display.println("@ABCDEFGHIJKLMNO");
-  display.println("PQRSTUVWXYZ[\\]^_");
-  display.println("`abcdefghijklmno");
-  display.println("pqrstuvwxyz{|}~ ");
-  display.update();
-  delay(10000);
-}
-
 void loop()
 {
   showBitmapExample();
-  showFont("FreeMonoBold9pt7b", &FreeMonoBold9pt7b);
-  showFont("FreeMonoBold12pt7b", &FreeMonoBold12pt7b);
-  showFont("FreeMonoBold18pt7b", &FreeMonoBold18pt7b);
-  showFont("FreeMonoBold24pt7b", &FreeMonoBold24pt7b);
   delay(30000);
 }
