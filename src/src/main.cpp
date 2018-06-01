@@ -54,8 +54,8 @@ void setup() {
     * update a partial display several times.
     * 1 byte = 8 pixels, therefore you have to set 8*N pixels at a time.
     */
-  /*
-  unsigned char image[1500];
+
+  unsigned char image[1400];
   Paint paint(image, 400, 28);    //width should be the multiple of 8
 
   paint.Clear(UNCOLORED);
@@ -86,7 +86,6 @@ void setup() {
   paint.Clear(UNCOLORED);
   paint.DrawFilledCircle(32, 32, 30, COLORED);
   epd.SetPartialWindow(paint.GetImage(), 200, 200, paint.GetWidth(), paint.GetHeight());
-  */
 
   /* This displays the data from the SRAM in e-Paper module */
   epd.DisplayFrame();
