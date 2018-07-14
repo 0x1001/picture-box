@@ -30,181 +30,124 @@
 #include "epd4in2.h"
 #include "epdpaint.h"
 
-#define COLORED     0
-#define UNCOLORED   1
+#define SD_CHIP_SELECT 6
+#define BUFFER_SIZE 200
+#define SCREEN_WIDTH 400
+#define SCREEN_HIGHT 300
 
 Sd2Card card;
 SdVolume volume;
 SdFile root;
-File myFile;
 
-#define SD_CHIP_SELECT 6
+int readFilePart(const char * fileName, uint8_t * imageBuffer, int16_t size, uint32_t offset)
+{
+  File myFile = SD.open(fileName);
+  int16_t bytesRead = 0;
+  int16_t currentReadBytes = 0;
+  if (myFile) {
+    myFile.seek(offset);
+
+    while (bytesRead < size) {
+       currentReadBytes = myFile.read(imageBuffer + bytesRead, size);
+       if (currentReadBytes == -1)
+       {
+         Serial.println("Errore generale");
+         myFile.close();
+         return 1;
+       }
+       bytesRead += currentReadBytes;
+    }
+    myFile.close();
+
+  } else {
+    return 1;
+  }
+  return 0;
+}
 
 void setup() {
-  // put your setup code here, to run once:
+  static unsigned char image_buffer[BUFFER_SIZE];
+  Epd epd;
   Serial.begin(9600);
-
   delay(5);
 
-  Serial.println("e-Paper start");
-
-  pinMode(SS, OUTPUT);
-
-  // we'll use the initialization code from the utility libraries
-  // since we're just testing if the card is working!
-  while (!card.init(SPI_HALF_SPEED, SD_CHIP_SELECT)) {
-    Serial.println("initialization failed. Things to check:");
-    Serial.println("* is a card inserted?");
-    Serial.println("* Is your wiring correct?");
-    Serial.println("* did you change the chipSelect pin to match your shield or module?");
-  }
-
-
-  // print the type of card
-  Serial.print("\nCard type: ");
-  switch(card.type()) {
-    case SD_CARD_TYPE_SD1:
-      Serial.println("SD1");
-      break;
-    case SD_CARD_TYPE_SD2:
-      Serial.println("SD2");
-      break;
-    case SD_CARD_TYPE_SDHC:
-      Serial.println("SDHC");
-      break;
-    default:
-      Serial.println("Unknown");
-  }
-
-  // Now we will try to open the 'volume'/'partition' - it should be FAT16 or FAT32
-  if (!volume.init(card)) {
-    Serial.println("Could not find FAT16/FAT32 partition.\nMake sure you've formatted the card");
-    return;
-  }
-
-
-  // print the type and size of the first FAT-type volume
-  uint32_t volumesize;
-  Serial.print("\nVolume type is FAT");
-  Serial.println(volume.fatType(), DEC);
-  Serial.println();
-
-  volumesize = volume.blocksPerCluster();    // clusters are collections of blocks
-  volumesize *= volume.clusterCount();       // we'll have a lot of clusters
-  volumesize *= 512;                            // SD card blocks are always 512 bytes
-  Serial.print("Volume size (bytes): ");
-  Serial.println(volumesize);
-  Serial.print("Volume size (Kbytes): ");
-  volumesize /= 1024;
-  Serial.println(volumesize);
-  Serial.print("Volume size (Mbytes): ");
-  volumesize /= 1024;
-  Serial.println(volumesize);
-
-
-  Serial.println("\nFiles found on the card (name, date and size in bytes): ");
-  root.openRoot(volume);
-
-  // list all files in the card with date and size
-  root.ls(LS_R | LS_DATE | LS_SIZE);
-
-  if (!SD.begin(SD_CHIP_SELECT)) {
-    Serial.println("initialization failed!");
-    return;
-  }
-
-  myFile = SD.open("TEST.TXT");
-
-  if (myFile) {
-  while (myFile.available()) {
-    Serial.write(myFile.read());
-  }
-  myFile.close();
-}
-// if the file isn't open, pop up an error:
-else {
-  Serial.println("error opening test.txt");
-}
-
-  Epd epd;
+  Serial.println("Picture box started");
+  Serial.println("Screen init.");
   if (epd.Init() != 0) {
     Serial.println("e-Paper init failed");
     return;
   }
 
-  /* This clears the SRAM of the e-paper display */
-  epd.ClearFrame();
+  Serial.println("SD init.");
+  pinMode(SS, OUTPUT);
+  if (!SD.begin(SD_CHIP_SELECT)) {
+     Serial.println("SD card initialization failed! Power cycle card.");
+     return;
+   }
 
-  /**
-    * Due to RAM not enough in Arduino UNO, a frame buffer is not allowed.
-    * In this case, a smaller image buffer is allocated and you have to
-    * update a partial display several times.
-    * 1 byte = 8 pixels, therefore you have to set 8*N pixels at a time.
-    */
-
-  unsigned char image[1400];
-  Paint paint(image, 400, 28);    //width should be the multiple of 8
-
-  //epd.ClearFrame();
-  //epd.DisplayFrame();
-
-  paint.Clear(UNCOLORED);
-  for(int i=0; i < 400; i++)
+  if (SD.exists("bd1.bin")) {
+    Serial.println("file exists.");
+  } else
   {
-    for(int j=0; j < 28; j++)
-    {
-      paint.DrawAbsolutePixel(i, j, COLORED);
-    }
+    Serial.println("file doesn't exist.");
+    return;
   }
 
-  epd.SetPartialWindow(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
+  Serial.println("Reading the file.");
 
-  //epd.SetPartialWindow(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
-  //epd.SetPartialWindow(paint.GetImage(), 0, 28, paint.GetWidth(), paint.GetHeight());
-  //epd.SetPartialWindow(paint.GetImage(), 0, 2*28, paint.GetWidth(), paint.GetHeight());
+  epd.ClearFrame();
 
-  /*
-  paint.Clear(UNCOLORED);
-  paint.DrawStringAt(0, 0, "e-Paper Demo", &Font24, COLORED);
-  epd.SetPartialWindow(paint.GetImage(), 100, 40, paint.GetWidth(), paint.GetHeight());
+  int heightCounter = 0;
+  for (int i = 0; i < (((SCREEN_WIDTH/8)*SCREEN_HIGHT)/BUFFER_SIZE); i++)
+  {
 
-  paint.Clear(COLORED);
-  paint.DrawStringAt(100, 2, "Hello world", &Font24, UNCOLORED);
-  epd.SetPartialWindow(paint.GetImage(), 0, 64, paint.GetWidth(), paint.GetHeight());
+    /*
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 0*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 0, 400, 4);
 
-  paint.SetWidth(64);
-  paint.SetHeight(64);
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 1*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 4, 400, 4);
 
-  paint.Clear(UNCOLORED);
-  paint.DrawRectangle(0, 0, 40, 50, COLORED);
-  paint.DrawLine(0, 0, 40, 50, COLORED);
-  paint.DrawLine(40, 0, 0, 50, COLORED);
-  epd.SetPartialWindow(paint.GetImage(), 72, 120, paint.GetWidth(), paint.GetHeight());
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 2*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 8, 400, 4);
 
-  paint.Clear(UNCOLORED);
-  paint.DrawCircle(32, 32, 30, COLORED);
-  epd.SetPartialWindow(paint.GetImage(), 200, 120, paint.GetWidth(), paint.GetHeight());
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 3*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 12, 400, 4);
 
-  paint.Clear(UNCOLORED);
-  paint.DrawFilledRectangle(0, 0, 40, 50, COLORED);
-  epd.SetPartialWindow(paint.GetImage(), 72, 200, paint.GetWidth(), paint.GetHeight());
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 4*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 16, 400, 4);
 
-  paint.Clear(UNCOLORED);
-  paint.DrawFilledCircle(32, 32, 30, COLORED);
-  epd.SetPartialWindow(paint.GetImage(), 200, 200, paint.GetWidth(), paint.GetHeight());
-  */
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 5*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 20, 400, 4);
 
-  /* This displays the data from the SRAM in e-Paper module */
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 6*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 24, 400, 4);
+
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 7*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 28, 400, 4);
+
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 8*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 32, 400, 4);
+
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 9*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 36, 400, 4);
+
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 10*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 40, 400, 4);
+
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 11*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, 44, 400, 4);
+
+    break;
+    */
+
+    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, i*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, i*4, 400, 4);
+  }
+
+  Serial.println("Screen refresh.");
   epd.DisplayFrame();
-
-  /* This displays an image */
-  //epd.DisplayFrame(IMAGE_BUTTERFLY);
-
-  /* Deep sleep */
-  epd.Sleep();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-
 }
