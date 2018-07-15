@@ -6,15 +6,21 @@ WIDTH = 400
 HEIGHT = 300
 
 
+def convert_dir(path):
+    for root, dirs, files in os.walk(path):
+        for file_name in files:
+            if file_name.lower().endswith(".png") or file_name.lower().endswith(".jpg") or file_name.lower().endswith(".jpeg"):
+                convert(os.path.join(root, file_name))
+
+
 def convert(path):
+    print("Processing: " + path)
     im = Image.open(path)
+    im = _resize(im)
     im = im.convert('1')
     pixels = im.load()
 
-    width, height = im.size
-
-    if width != WIDTH or height != HEIGHT:
-        raise Exception("Width or height of the picture is not supported: {0}x{1}".format(width, height))
+    im.save(os.path.join(os.path.dirname(path), "_" + os.path.splitext(os.path.basename(path))[0] + os.path.splitext(os.path.basename(path))[1]))
 
     binary_image = bytearray(int(WIDTH*HEIGHT/8))
 
@@ -31,9 +37,25 @@ def convert(path):
         fp.write(binary_image)
 
 
+def _resize(im):
+    width, height = im.size
+
+    if width%400 != 0 or height%300 != 0:
+        raise Exception("Width or height of the picture is not supported: {0}x{1}".format(width, height))
+
+    return im.resize((400,300))
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Converts 400x300 images for Waveshare 4.2inc screen.')
-    parser.add_argument('--path', "-p", required=True, type=str, dest="path", help='path to image file')
+    parser = argparse.ArgumentParser(description='Converts 400x300 (and multiples of 400x300. ex: 800x600) images for Waveshare 4.2inc screen.')
+    parser.add_argument('--path', "-p",
+                        required=True,
+                        type=str,
+                        dest="path",
+                        help='path to image file or to folder with images')
 
     args = parser.parse_args()
-    convert(args.path)
+    if os.path.isfile(args.path):
+        convert(args.path)
+    elif os.path.isdir(args.path):
+        convert_dir(args.path)
