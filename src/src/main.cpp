@@ -1,29 +1,3 @@
-/**
- *  @filename   :   epd4in2-demo.ino
- *  @brief      :   4.2inch e-paper display demo
- *  @author     :   Yehui from Waveshare
- *
- *  Copyright (C) Waveshare     August 4 2017
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documnetation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to  whom the Software is
- * furished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS OR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
 #include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
@@ -31,15 +5,24 @@
 #include "epdpaint.h"
 
 #define SD_CHIP_SELECT 6
+
+// Has to be multiple of 50: 50, 100, 150... First 50 bytes is first vertical line, Second 50 bytes is second vertical line, ...
 #define BUFFER_SIZE 200
+
+// Screen dimensions
 #define SCREEN_WIDTH 400
 #define SCREEN_HIGHT 300
+
+#define BUTTON 5
 
 Sd2Card card;
 SdVolume volume;
 SdFile root;
+Epd epd;
+unsigned char image_buffer[BUFFER_SIZE];
 
-int readFilePart(const char * fileName, uint8_t * imageBuffer, int16_t size, uint32_t offset)
+// Reads part of file from SD card
+uint32_t readFilePart(const char * fileName, uint8_t * imageBuffer, int16_t size, uint32_t offset)
 {
   File myFile = SD.open(fileName);
   int16_t bytesRead = 0;
@@ -65,9 +48,57 @@ int readFilePart(const char * fileName, uint8_t * imageBuffer, int16_t size, uin
   return 0;
 }
 
+// Counts files that are on SD card root
+uint32_t countFiles()
+{
+  File root = SD.open("/");
+  root.rewindDirectory();
+  uint32_t counter = 0;
+
+  while(true) {
+    File entry =  root.openNextFile();
+    if (! entry) {
+      break;
+    }
+    entry.close();
+    counter++;
+  }
+  root.close();
+
+  return counter;
+}
+
+// Selects random file from SD card. All files should be placed directly on SD root
+char * randomFile()
+{
+  static uint32_t lastIdx = 0;
+  uint32_t idx = 0;
+  uint32_t fileCount = countFiles();
+
+  do
+  {
+      idx = random(1, fileCount); // Starts from one because there is hidden dict SYSTEM~1
+  } while(lastIdx == idx);
+
+  lastIdx = idx;
+
+  char * fileName;
+  File root = SD.open("/");
+  root.rewindDirectory();
+
+  for(uint32_t i = 0; i <= idx; i++)
+  {
+    File entry = root.openNextFile();
+    fileName = entry.name();
+    entry.close();
+  }
+  root.close();
+
+  return fileName;
+}
+
+
 void setup() {
-  static unsigned char image_buffer[BUFFER_SIZE];
-  Epd epd;
   Serial.begin(9600);
   delay(5);
 
@@ -85,69 +116,23 @@ void setup() {
      return;
    }
 
-  if (SD.exists("bd1.bin")) {
-    Serial.println("file exists.");
-  } else
-  {
-    Serial.println("file doesn't exist.");
-    return;
-  }
-
-  Serial.println("Reading the file.");
-
-  epd.ClearFrame();
-
-  int heightCounter = 0;
-  for (int i = 0; i < (((SCREEN_WIDTH/8)*SCREEN_HIGHT)/BUFFER_SIZE); i++)
-  {
-
-    /*
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 0*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 0, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 1*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 4, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 2*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 8, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 3*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 12, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 4*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 16, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 5*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 20, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 6*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 24, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 7*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 28, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 8*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 32, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 9*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 36, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 10*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 40, 400, 4);
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, 11*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, 44, 400, 4);
-
-    break;
-    */
-
-    readFilePart("bd1.bin", image_buffer, BUFFER_SIZE, i*BUFFER_SIZE);
-    epd.SetPartialWindow(image_buffer, 0, i*4, 400, 4);
-  }
-
-  Serial.println("Screen refresh.");
-  epd.DisplayFrame();
+   pinMode(BUTTON, INPUT);
 }
 
 void loop() {
+  if (digitalRead(BUTTON) == 0)
+  {
+    char * fileName = randomFile();
+    Serial.println("Choosen file");
+    Serial.println(fileName);
+
+    for (uint32_t i = 0; i < (((SCREEN_WIDTH/8)*SCREEN_HIGHT)/BUFFER_SIZE); i++)
+    {
+      readFilePart(fileName, image_buffer, BUFFER_SIZE, i*BUFFER_SIZE);
+      epd.SetPartialWindow(image_buffer, 0, i*(BUFFER_SIZE / 50), SCREEN_WIDTH, BUFFER_SIZE / 50);
+    }
+
+    Serial.println("Screen refresh.");
+    epd.DisplayFrame();
+  }
 }

@@ -18,9 +18,8 @@ def convert(path):
 
     binary_image = bytearray(int(WIDTH*HEIGHT/8))
 
-    for j in range(HEIGHT):
-        for i in range(WIDTH):
-            print("[{0},{1}] => {2}".format(i, j, int((i + j * WIDTH) / 8)))
+    for i in range(WIDTH):
+        for j in range(HEIGHT):
             if pixels[i, j] == 255:
                 binary_image[int((i + j * WIDTH) / 8)] |= 0x80 >> (i % 8)
                 #image[(x + y * this->width) / 8] |= 0x80 >> (x % 8);
