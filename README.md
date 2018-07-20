@@ -15,6 +15,7 @@ Each image should be named number.bin. Example: 1.bin, 2.bin, 3.bin, ..., 10.bin
 - Arduino Pro Mini: [Link](https://store.arduino.cc/arduino-pro-mini)
 - SD card reader that can be connected to Arduino
 - Plastic case with transparent top
+- Three batteries AA or AAA and battery holder.
 
 ## Image converter
 This python script requires Python 3.x [Link](https://www.python.org/)
@@ -35,5 +36,5 @@ optional arguments:
 ![Picture Box schematic](/docs/schematic_bb.png?raw=true "Picture Box schematic")
 
 ## Photos
-![Picture Box Photos](/docs/photo1.png?raw=true "Picture Box Photos")
-![Picture Box Photos](/docs/photo2.png?raw=true "Picture Box Photos")
+![Picture Box Photos](/docs/photo1.jpg?raw=true "Picture Box Photos")
+![Picture Box Photos](/docs/photo2.jpg?raw=true "Picture Box Photos")
