@@ -53,55 +53,22 @@ uint32_t readFilePart(const char * fileName, uint8_t * imageBuffer, int16_t size
   return 0;
 }
 
-// Counts files that are on SD card root
-uint32_t countFiles()
-{
-  File root = SD.open("/");
-  root.rewindDirectory();
-  uint32_t counter = 0;
-
-  while(true) {
-    File entry =  root.openNextFile();
-    if (! entry) {
-      break;
-    }
-    entry.close();
-    counter++;
-  }
-  root.close();
-
-  return counter;
-}
-
 // Selects random file from SD card. All files should be placed directly on SD root
-char * randomFile()
+void randomFile(char * fileName)
 {
-  static uint32_t lastIdx = 0;
   uint32_t idx = 0;
-  uint32_t fileCount = countFiles();
+  uint32_t fileCount = 1024;
 
-  do
+  while (1)
   {
-      idx = random(1, fileCount); // Starts from one because there is hidden dict SYSTEM~1
-  } while(lastIdx == idx);
-
-  lastIdx = idx;
-
-  char * fileName;
-  File root = SD.open("/");
-  root.rewindDirectory();
-
-  for(uint32_t i = 0; i <= idx; i++)
-  {
-    File entry = root.openNextFile();
-    fileName = entry.name();
-    entry.close();
+    idx = random(1, fileCount); // Starts from one: pictures should be named 1.bin, 2.bin, 3.bin, ..., 100.bin, ..., 355.bin, ...
+    sprintf(fileName, "%d.bin", (int)idx);
+    if (SD.exists(fileName))
+    {
+        return;
+    }
   }
-  root.close();
-
-  return fileName;
 }
-
 
 void setup() {
   Serial.begin(9600);
@@ -123,6 +90,8 @@ void setup() {
 }
 
 void loop() {
+  char fileName[10];
+
   if (digitalRead(BUTTON) == 0)
   {
     Serial.println("SD init.");
@@ -132,7 +101,9 @@ void loop() {
      }
 
     digitalWrite(LED, HIGH);
-    char * fileName = randomFile();
+    Serial.println("Chooseing random file...");
+    randomFile(fileName);
+    Serial.println("Done...");
     Serial.println("Choosen file");
     Serial.println(fileName);
 

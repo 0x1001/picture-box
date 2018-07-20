@@ -40,14 +40,14 @@ def convert(path):
 def _resize(im):
     width, height = im.size
 
-    if width%400 != 0 or height%300 != 0:
+    if 1.3 < width/height < 1.4:
         raise Exception("Width or height of the picture is not supported: {0}x{1}".format(width, height))
 
     return im.resize((400,300))
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Converts 400x300 (and multiples of 400x300. ex: 800x600) images for Waveshare 4.2inc screen.')
+    parser = argparse.ArgumentParser(description='Converts any 4:3 image to Waveshare 4.2inc screen SRAM format.')
     parser.add_argument('--path', "-p",
                         required=True,
                         type=str,
