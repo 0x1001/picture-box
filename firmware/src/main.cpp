@@ -29,25 +29,36 @@ unsigned char image_buffer[BUFFER_SIZE];
 // Reads part of file from SD card
 uint32_t readFilePart(const char * fileName, uint8_t * imageBuffer, int16_t size, uint32_t offset)
 {
-  File myFile = SD.open(fileName);
+  static bool newFile = true;
+  static File myFile;
+
+  if (newFile)
+  {
+    myFile = SD.open(fileName);
+    newFile = false;
+  }
+
   int16_t bytesRead = 0;
   int16_t currentReadBytes = 0;
   if (myFile) {
-    myFile.seek(offset);
-
     while (bytesRead < size) {
        currentReadBytes = myFile.read(imageBuffer + bytesRead, size);
        if (currentReadBytes == -1)
        {
          Serial.println("Errore generale");
          myFile.close();
+         newFile = true;
          return 1;
        }
        bytesRead += currentReadBytes;
     }
-    myFile.close();
-
+    if ((offset + size) == ((SCREEN_WIDTH/8)*SCREEN_HIGHT))
+    {
+      myFile.close();
+      newFile = true;
+    }
   } else {
+    newFile = true;
     return 1;
   }
   return 0;
@@ -70,6 +81,30 @@ void randomFile(char * fileName)
   }
 }
 
+void loadImage()
+{
+  static char fileName[10];
+  Serial.println("SD init.");
+  if (!SD.begin(SD_CHIP_SELECT)) {
+     Serial.println("SD card initialization failed! Power cycle card.");
+     return;
+   }
+
+  Serial.println("Chooseing random file...");
+  randomFile(fileName);
+  Serial.println("Done...");
+  Serial.println("Choosen file");
+  Serial.println(fileName);
+
+  for (uint32_t i = 0; i < (((SCREEN_WIDTH/8)*SCREEN_HIGHT)/BUFFER_SIZE); i++)
+  {
+    readFilePart(fileName, image_buffer, BUFFER_SIZE, i*BUFFER_SIZE);
+    epd.SetPartialWindow(image_buffer, 0, i*(BUFFER_SIZE / 50), SCREEN_WIDTH, BUFFER_SIZE / 50);
+  }
+
+  SD.end();
+}
+
 void setup() {
   Serial.begin(9600);
   delay(5);
@@ -90,31 +125,10 @@ void setup() {
 }
 
 void loop() {
-  char fileName[10];
-
   if (digitalRead(BUTTON) == 0)
   {
-    Serial.println("SD init.");
-    if (!SD.begin(SD_CHIP_SELECT)) {
-       Serial.println("SD card initialization failed! Power cycle card.");
-       return;
-     }
-
     digitalWrite(LED, HIGH);
-    Serial.println("Chooseing random file...");
-    randomFile(fileName);
-    Serial.println("Done...");
-    Serial.println("Choosen file");
-    Serial.println(fileName);
-
-    for (uint32_t i = 0; i < (((SCREEN_WIDTH/8)*SCREEN_HIGHT)/BUFFER_SIZE); i++)
-    {
-      readFilePart(fileName, image_buffer, BUFFER_SIZE, i*BUFFER_SIZE);
-      epd.SetPartialWindow(image_buffer, 0, i*(BUFFER_SIZE / 50), SCREEN_WIDTH, BUFFER_SIZE / 50);
-    }
-
-    SD.end();
-
+    loadImage();
     Serial.println("Screen refresh.");
     epd.DisplayFrame();
     digitalWrite(LED, LOW);
